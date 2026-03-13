@@ -1,30 +1,80 @@
 <html>
 
+<head>
+
+<title>Key Panel</title>
+
+<style>
+
+body{
+background:#0f172a;
+color:white;
+font-family:Arial;
+padding:40px;
+}
+
+h1{
+color:#22c55e;
+}
+
+table{
+width:100%;
+border-collapse:collapse;
+margin-top:20px;
+}
+
+th,td{
+padding:10px;
+border-bottom:1px solid #334155;
+text-align:center;
+}
+
+button{
+
+border:none;
+padding:6px 12px;
+cursor:pointer;
+border-radius:5px;
+
+}
+
+.create{
+background:#22c55e;
+}
+
+.delete{
+background:#ef4444;
+}
+
+.auth{
+background:#f59e0b;
+}
+
+</style>
+
+</head>
+
 <body>
 
-<h2>Tạo key</h2>
+<h1>Key Server Panel</h1>
 
 <form action="/create" method="post">
 
-<select name="days">
-<option value="1">1 ngày</option>
-<option value="7">7 ngày</option>
-<option value="30">30 ngày</option>
-</select>
+<input name="days" placeholder="Days">
 
-<button>Tạo</button>
+<button class="create">Create Key</button>
 
 </form>
 
-<h2>Danh sách key</h2>
-
-<table border="1">
+<table>
 
 <tr>
-<th>Key</th>
-<th>Thời gian</th>
-<th>Gia hạn</th>
-<th>Xoá</th>
+
+<th>KEY</th>
+<th>TIME</th>
+<th>DEVICE</th>
+<th>ACTION</th>
+
 </tr>
 
 {% for k in keys %}
@@ -32,18 +82,28 @@
 <tr>
 
 <td>{{k.key}}</td>
+
 <td>{{k.days}}d {{k.hours}}h</td>
 
-<td>
-
-<a href="/extend/{{k.key}}/1">+1d</a>
-<a href="/extend/{{k.key}}/7">+7d</a>
-
-</td>
+<td>{{k.device}}</td>
 
 <td>
 
-<a href="/delete/{{k.key}}">Delete</a>
+<a href="/authorize/{{k.key}}">
+<button class="auth">Ủy quyền</button>
+</a>
+
+<a href="/delete/{{k.key}}">
+<button class="delete">Xóa</button>
+</a>
+
+<form action="/upload/{{k.key}}" method="post" enctype="multipart/form-data">
+
+<input type="file" name="file">
+
+<button>Upload</button>
+
+</form>
 
 </td>
 
@@ -54,4 +114,5 @@
 </table>
 
 </body>
+
 </html>
