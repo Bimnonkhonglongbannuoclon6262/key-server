@@ -1,0 +1,57 @@
+<html>
+
+<body>
+
+<h2>Tạo key</h2>
+
+<form action="/create" method="post">
+
+<select name="days">
+<option value="1">1 ngày</option>
+<option value="7">7 ngày</option>
+<option value="30">30 ngày</option>
+</select>
+
+<button>Tạo</button>
+
+</form>
+
+<h2>Danh sách key</h2>
+
+<table border="1">
+
+<tr>
+<th>Key</th>
+<th>Thời gian</th>
+<th>Gia hạn</th>
+<th>Xoá</th>
+</tr>
+
+{% for k in keys %}
+
+<tr>
+
+<td>{{k.key}}</td>
+<td>{{k.days}}d {{k.hours}}h</td>
+
+<td>
+
+<a href="/extend/{{k.key}}/1">+1d</a>
+<a href="/extend/{{k.key}}/7">+7d</a>
+
+</td>
+
+<td>
+
+<a href="/delete/{{k.key}}">Delete</a>
+
+</td>
+
+</tr>
+
+{% endfor %}
+
+</table>
+
+</body>
+</html>
