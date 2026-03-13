@@ -9,9 +9,13 @@ app = Flask(__name__)
 DB = "keys.json"
 FILES = "keyfiles"
 
+RESET_TIME = 7200   # 2h
+
 os.makedirs(FILES, exist_ok=True)
 
-# ---------------------
+# -------------------------
+# DATABASE
+# -------------------------
 
 def load():
     if not os.path.exists(DB):
@@ -23,15 +27,14 @@ def save(data):
     with open(DB,"w") as f:
         json.dump(data,f,indent=4)
 
-# ---------------------
+# -------------------------
 # CLEAN KEYS
-# ---------------------
+# -------------------------
 
 def clean():
 
     db = load()
     now = time.time()
-
     changed = False
 
     for k in list(db.keys()):
@@ -42,18 +45,19 @@ def clean():
             changed = True
             continue
 
-        # reset device sau 24h
+        # reset IP sau 2h
         if db[k]["device"] is not None:
-            if now - db[k]["device_time"] > 86400:
+            if now - db[k]["device_time"] > RESET_TIME:
                 db[k]["device"] = None
+                db[k]["device_time"] = 0
                 changed = True
 
     if changed:
         save(db)
 
-# ---------------------
+# -------------------------
 # PANEL
-# ---------------------
+# -------------------------
 
 @app.route("/")
 def panel():
@@ -61,7 +65,6 @@ def panel():
     clean()
 
     db = load()
-
     data = []
 
     for k,v in db.items():
@@ -74,14 +77,15 @@ def panel():
         data.append({
             "key":k,
             "days":days,
-            "hours":hours
+            "hours":hours,
+            "device":v["device"]
         })
 
     return render_template("panel.html",keys=data)
 
-# ---------------------
+# -------------------------
 # CREATE KEY
-# ---------------------
+# -------------------------
 
 @app.route("/create",methods=["POST"])
 def create():
@@ -106,24 +110,9 @@ def create():
 
     return redirect("/")
 
-# ---------------------
-# EXTEND KEY
-# ---------------------
-
-@app.route("/extend/<key>/<int:days>")
-def extend(key,days):
-
-    db = load()
-
-    if key in db:
-        db[key]["expire"] += days*86400
-        save(db)
-
-    return redirect("/")
-
-# ---------------------
+# -------------------------
 # DELETE KEY
-# ---------------------
+# -------------------------
 
 @app.route("/delete/<key>")
 def delete(key):
@@ -136,9 +125,25 @@ def delete(key):
 
     return redirect("/")
 
-# ---------------------
+# -------------------------
+# REVOKE DEVICE
+# -------------------------
+
+@app.route("/revoke/<key>")
+def revoke(key):
+
+    db = load()
+
+    if key in db:
+        db[key]["device"] = None
+        db[key]["device_time"] = 0
+        save(db)
+
+    return redirect("/")
+
+# -------------------------
 # UPLOAD FILE
-# ---------------------
+# -------------------------
 
 @app.route("/upload/<key>",methods=["POST"])
 def upload(key):
@@ -153,9 +158,9 @@ def upload(key):
 
     return redirect("/")
 
-# ---------------------
+# -------------------------
 # CLIENT CHECK
-# ---------------------
+# -------------------------
 
 @app.route("/api/check",methods=["POST"])
 def check():
@@ -169,13 +174,20 @@ def check():
     if key not in db:
         return jsonify({"status":"invalid"})
 
+    ip = request.remote_addr
     now = time.time()
 
+    # nếu chưa có device
     if db[key]["device"] is None:
 
-        db[key]["device"] = request.remote_addr
+        db[key]["device"] = ip
         db[key]["device_time"] = now
         save(db)
+
+    # nếu IP khác
+    elif db[key]["device"] != ip:
+
+        return jsonify({"status":"locked"})
 
     remain = int(db[key]["expire"]-now)
 
@@ -194,33 +206,34 @@ def check():
         "download":"/download/"+key
     })
 
-# ---------------------
+# -------------------------
 # DOWNLOAD
-# ---------------------
+# -------------------------
 
 @app.route("/download/<key>/<file>")
 def download(key,file):
 
     return send_from_directory(f"{FILES}/{key}",file)
 
-# ---------------------
-# TRANSFER DEVICE
-# ---------------------
+# -------------------------
+# CLIENT REVOKE
+# -------------------------
 
-@app.route("/api/transfer",methods=["POST"])
-def transfer():
+@app.route("/api/revoke",methods=["POST"])
+def revoke_client():
 
     key = request.json["key"]
 
     db = load()
 
     if key in db:
+
         db[key]["device"] = None
         db[key]["device_time"] = 0
         save(db)
 
-    return jsonify({"status":"ok"})
+    return jsonify({"status":"revoked","delete_files":True})
 
-# ---------------------
+# -------------------------
 
 app.run(host="0.0.0.0",port=10000)
